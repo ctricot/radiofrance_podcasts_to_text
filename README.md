@@ -1,4 +1,4 @@
-# Podcast Scraper
+# Radio France Podcast Scraper
 
 This Python script scrapes and downloads podcast episodes from the France Culture series like "Le Pourquoi du Comment : Philo". It retrieves all the episode links from multiple pages, extracts their content (text and MP3), and saves them locally.
 
@@ -28,7 +28,7 @@ pip install -r requirements.txt
 ### 1. Clone the repository
 Clone the repository to your local machine:
 ```bash
-git clone https://github.com/yourusername/podcast-scraper.git
+git clone https://github.com/ctricot/radiofrance_podcasts_to_text
 cd radiofrance_podcasts_to_text
 ```
 
