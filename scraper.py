@@ -61,7 +61,7 @@ def parser_date(date_str):
     """
     Parse a date in the format 'Friday 31 May 2024' into a datetime object without using an external library.
     """
-    months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+    months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
 
     # Extract the parts of the date
     parts = date_str.split()
