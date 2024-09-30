@@ -2,6 +2,12 @@ import requests
 import os
 import configparser
 import time
+from datetime import datetime
+
+def log_message(message: str):
+    """Helper function to print messages with timestamp"""
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f"[{timestamp}] {message}")
 
 def audio_transcription(filepath: str, gladia_key: str):
     # Split the filename and extension to create the transcription file path
@@ -10,7 +16,7 @@ def audio_transcription(filepath: str, gladia_key: str):
 
     # Check if the transcription file already exists
     if os.path.exists(transcription_filepath):
-        print(f"Transcription file already exists for {transcription_filepath}, skipping transcription.")
+        log_message(f"Transcription file already exists for {transcription_filepath}, skipping transcription.")
         return  # Exit the function if the .txt file already exists
 
     # If the file doesn't exist, proceed with transcription
@@ -26,7 +32,7 @@ def audio_transcription(filepath: str, gladia_key: str):
             'output_format': (None, 'txt')  # Specify output format as text
         }
 
-        print(f'Sending request to Gladia API for {filepath}')
+        log_message(f'Sending request to Gladia API for {filepath}')
 
         while True:
             try:
@@ -45,23 +51,23 @@ def audio_transcription(filepath: str, gladia_key: str):
                     with open(transcription_filepath, 'w') as f:
                         f.write(prediction)
 
-                    print(f"Transcription saved at {transcription_filepath}")
+                    log_message(f"Transcription saved at {transcription_filepath}")
                     return response
 
                 elif response.status_code == 429:
                     # Handle the "Too Many Requests" error by waiting 60 minutes
-                    print("Received 429 Too Many Requests error. Waiting for 60 minutes before retrying...")
+                    log_message("Received 429 Too Many Requests error. Waiting for 60 minutes before retrying...")
                     time.sleep(60 * 60)  # Wait for 60 minutes before retrying
 
                 else:
                     # If the request fails with another status code, print the error details
-                    print(f"Request failed for {filepath}. Error: {response.status_code}")
-                    print(f"Response content: {response.text}")
+                    log_message(f"Request failed for {filepath}. Error: {response.status_code}")
+                    log_message(f"Response content: {response.text}")
                     return response.json()
 
             except requests.exceptions.RequestException as e:
                 # Handle any request exceptions
-                print(f"An error occurred: {e}")
+                log_message(f"An error occurred: {e}")
                 return None
 
 def transcribe_all_mp3_in_directory(directory: str, gladia_key: str):
