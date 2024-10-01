@@ -16,7 +16,6 @@ def audio_transcription(filepath: str, gladia_key: str):
 
     # Check if the transcription file already exists
     if os.path.exists(transcription_filepath):
-        log_message(f"Transcription file already exists for {transcription_filepath}, skipping transcription.")
         return  # Exit the function if the .txt file already exists
 
     # If the file doesn't exist, proceed with transcription
@@ -32,7 +31,10 @@ def audio_transcription(filepath: str, gladia_key: str):
             'output_format': (None, 'txt')  # Specify output format as text
         }
 
-        log_message(f'Sending request to Gladia API for {filepath}')
+        parent_dir = os.path.basename(os.path.dirname(filepath))
+        file_name = os.path.basename(filepath)
+
+        log_message(f'Sending request to Gladia API for {parent_dir}/{file_name}')
 
         while True:
             try:
@@ -51,7 +53,7 @@ def audio_transcription(filepath: str, gladia_key: str):
                     with open(transcription_filepath, 'w') as f:
                         f.write(prediction)
 
-                    log_message(f"Transcription saved at {transcription_filepath}")
+                    log_message(f"Transcription saved at {parent_dir}/{file_name}")
                     return response
 
                 elif response.status_code == 429:
@@ -61,19 +63,19 @@ def audio_transcription(filepath: str, gladia_key: str):
 
                 else:
                     # If the request fails with another status code, print the error details
-                    log_message(f"Request failed for {filepath}. Error: {response.status_code}")
+                    log_message(f"Request failed for {parent_dir}/{file_name}. Error: {response.status_code}")
                     log_message(f"Response content: {response.text}")
                     return response.json()
 
             except requests.exceptions.RequestException as e:
                 # Handle any request exceptions
-                log_message(f"An error occurred: {e}")
+                log_message(f"An error occurred for {parent_dir}/{file_name}: {e}")
                 return None
 
 def transcribe_all_mp3_in_directory(directory: str, gladia_key: str):
-    # Walk through the directory and all subdirectories
-    for root, dirs, files in os.walk(directory):
-        for file in files:
+    # Walk through the directory and all subdirectories in alphabetical order
+    for root, dirs, files in sorted(os.walk(directory)):
+        for file in sorted(files):
             # Check if the file is an MP3
             if file.lower().endswith('.mp3'):
                 filepath = os.path.join(root, file)
