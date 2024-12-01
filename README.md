@@ -58,8 +58,7 @@ GladiaKey = your_gladia_api_key_here
 ### 4. Run the script
 Execute the scraper to download the episodes, their content and generate the transcription :
 ```bash
-python scraper.py
-python transcriber.py
+python scrap_and_transcribe.py
 ```
 
 The script will download the podcasts, save them in the directory you specified in the `config.ini` file, and then use the Gladia service to transcribe the MP3 files into text.

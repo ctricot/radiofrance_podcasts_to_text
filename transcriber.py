@@ -2,12 +2,7 @@ import requests
 import os
 import configparser
 import time
-from datetime import datetime
-
-def log_message(message: str):
-    """Helper function to print messages with timestamp"""
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] {message}")
+from utils import log_message
 
 def audio_transcription(filepath: str, gladia_key: str):
     # Split the filename and extension to create the transcription file path
@@ -82,11 +77,22 @@ def transcribe_all_mp3_in_directory(directory: str, gladia_key: str):
                 # Call the transcription function for each MP3 file
                 audio_transcription(filepath=filepath, gladia_key=gladia_key)
 
-# Load configuration
-config = configparser.ConfigParser()
-config.read('config.ini')
-save_path = config['DEFAULT']['SavePath']
-gladia_key = config['DEFAULT']['GladiaKey']
 
-# Start transcribing all MP3 files in the folder
-transcribe_all_mp3_in_directory(directory=save_path, gladia_key=gladia_key)
+def transcribe(save_path, gladia_key):
+    # Start transcribing all MP3 files in the folder
+    log_message("Starting transcription process...")
+    transcribe_all_mp3_in_directory(directory=save_path, gladia_key=gladia_key)
+    log_message("Transcription process completed.")
+
+if __name__ == "__main__":
+     # Load configuration
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+
+    try:
+        save_path = config['DEFAULT']['SavePath']
+        gladia_key = config['DEFAULT']['GladiaKey']
+        transcribe(save_path=save_path, gladia_key=gladia_key)
+    except KeyError as e:
+        log_message(f"Configuration error: {e}")
+
