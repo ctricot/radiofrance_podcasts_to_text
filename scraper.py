@@ -7,13 +7,16 @@ import configparser
 
 def extract_links(url):
     """Extract all links from a given URL and return them as a list."""
+    #print(f"extracting links from {url}...")
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
     
     links = []
-    for div in soup.find_all("div", {"class": "CardTitle"}):
+    for div in soup.find_all("span", {"class": "CardTitle"}):
         for link in div.find_all('a', href=True):
-            links.append(link['href'])
+            href = link['href']
+            links.append(href)
+           
 
     return links
 
@@ -65,9 +68,9 @@ def parser_date(date_str):
 
     # Extract the parts of the date
     parts = date_str.split()
-    day = int(parts[1])
-    month = parts[2]
-    year = int(parts[3])
+    day = int(parts[3])
+    month = parts[4]
+    year = int(parts[5])
 
     # Find the index of the month
     month_index = months.index(month) + 1
@@ -153,6 +156,7 @@ save_path = config['DEFAULT']['SavePath']
 podcast_url = config['DEFAULT']['PodcastUrl']
 
 all_links = extract_all_links(current_page=1, max_pages=5, podcast_url=podcast_url)
+print(f"{len(all_links)} in feed")
 for link in all_links:
     url = "https://www.radiofrance.fr" + link
     extract_content(url=url, save_path=save_path)
