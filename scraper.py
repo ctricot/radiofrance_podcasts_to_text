@@ -16,7 +16,6 @@ def extract_links(url):
         for link in div.find_all('a', href=True):
             href = link['href']
             links.append(href)
-           
 
     return links
 
@@ -90,7 +89,11 @@ def extract_content(url, save_path):
         soup = BeautifulSoup(response.text, 'html.parser')
         
         # Extract date
-        date = parser_date(soup.find_all("span", {"class": "CoverEpisode-date"})[0].getText())  
+        try:
+            date = parser_date(soup.find_all("p", {"class": "CoverEpisode-publicationInfo"})[0].getText())  
+        except Exception as e:
+            log_message(f"An error occurred: {e} for {url}")
+            raise e
 
         # Generate path
         path = os.path.join(save_path, date.strftime('%Y-%m-%d') + "-" + slug)
