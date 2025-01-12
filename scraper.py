@@ -13,7 +13,7 @@ def extract_links(url):
     soup = BeautifulSoup(response.text, 'html.parser')
 
     links = []
-    for div in soup.find_all("span", {"class": "CardTitle"}):
+    for div in soup.find_all(attrs={"class": "CardTitle"}):
         for link in div.find_all('a', href=True):
             href = link['href']
             links.append(href)
@@ -168,7 +168,7 @@ def scrap(podcast_url, save_path):
     log_message("Starting podcast extraction process...")
     all_links = extract_all_links(
         current_page=1, max_pages=5, podcast_url=podcast_url)
-    log_message(f"{len(all_links)} episodes found on the website.")
+    log_message(f"{len(all_links)} episodes found on the website {podcast_url}")
 
     for link in all_links:
         url = "https://www.radiofrance.fr" + link
