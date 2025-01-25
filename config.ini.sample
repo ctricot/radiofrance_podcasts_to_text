@@ -1,4 +1,4 @@
 [DEFAULT]
 SavePath = /Users/myusername/Documents/Podcasts/le-pourquoi-du-comment-philo
-PodcastUrl = https://www.radiofrance.fr/franceculture/podcasts/le-pourquoi-du-comment-philo
+PodcastRssUrl = https://radiofrance-podcast.net/podcast09/rss_22788.xml
 GladiaKey = 702f8ff0-d3cd-b069-b0ds9-b51dddz3ff37c

@@ -11,9 +11,9 @@ def main():
 
     try:
         save_path = config['DEFAULT']['SavePath']
-        podcast_url = config['DEFAULT']['PodcastUrl']
-        gladia_key = config['DEFAULT']['GladiaKey']
-        scrap(podcast_url=podcast_url, save_path=save_path)
+        podcast_rss_url = config['DEFAULT']['PodcastRssUrl']
+        gladia_key = config['GLADIA']['GladiaKey']
+        scrap(podcast_rss_url=podcast_rss_url, save_path=save_path)
         transcribe(save_path=save_path, gladia_key=gladia_key)
     except KeyError as e:
         log_message(f"Configuration error: {e}")

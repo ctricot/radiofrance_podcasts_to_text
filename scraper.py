@@ -5,44 +5,19 @@ import os
 from datetime import datetime
 import configparser
 from utils import log_message
+import json
+import feedparser
 
-
-def extract_links(url):
-    """Extract all links from a given URL and return them as a list."""
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, 'html.parser')
-
-    links = []
-    for div in soup.find_all(attrs={"class": "CardTitle"}):
-        for link in div.find_all('a', href=True):
-            href = link['href']
-            links.append(href)
-
-    return links
-
-
-def generate_page(page, podcast_url):
-    """Generate the URL for a given page number using the podcast URL from the config."""
-    url = f"{podcast_url}?p={page}"
-    return url
-
-
-def extract_all_links(current_page=1, max_pages=10, podcast_url=""):
-    """Extract links from multiple pages starting from the given URL."""
-    all_links = []
-    pages_visited = 0
-
-    while pages_visited < max_pages:
-        current_url = generate_page(current_page, podcast_url)
-        links = extract_links(current_url)
-        for link in links:
-            if link not in all_links:
-                all_links.append(link)
-        current_page += 1
-        pages_visited += 1
-
-    return all_links
-
+def extract_items_from_rss(rss_url):
+    """Extract all items from the RSS feed"""
+    # Parse the RSS feed
+    feed = feedparser.parse(rss_url)
+    
+    # Check if the feed was successfully parsed
+    if feed.bozo:
+        print(f"Error parsing RSS feed: {feed.bozo_exception}")
+        return []
+    return feed.entries
 
 def find_files_by_string(directory_path, search_string):
     """
@@ -86,62 +61,86 @@ def parser_date(date_str):
     return date_obj
 
 
-def extract_content(url, save_path):
+def extract_content(url, save_path, force_update=False):
     """Extract and save content from the given URL."""
+    #print(f"extract_content('{url}', '{save_path}')")
+
     slug = url.split('/')[-1]
 
-    if len(find_files_by_string(directory_path=save_path, search_string=slug)) == 0:
+    episode_data = {
+        'url': url,
+        'slug': slug,
+        'mp3': []
+    }
+
+    output_path = None
+
+    #check if ouput folder already exists
+    matching_files = find_files_by_string(directory_path=save_path, search_string=slug)
+    if len(matching_files) == 0 or force_update:
         # Load page
         response = requests.get(url)
         soup = BeautifulSoup(response.text, 'html.parser')
 
-        # Extract date
-        try:
-            date = parser_date(soup.find_all(
-                "p", {"class": "CoverEpisode-publicationInfo"})[0].getText())
+        # extract metadata
+        scripts = soup.find_all("script", type="application/ld+json")
+        for script in scripts:
+            try:
+                # Charger le contenu JSON du script
+                json_data = json.loads(script.string)
+                
+                # Vérifier si le graph contient un "@type":"RadioEpisode"
+                for graph in json_data.get("@graph", []):
+                    graph_type = graph.get("@type")
+                    episode_data[graph_type]=json_data
+            except (json.JSONDecodeError, AttributeError) as e:
+                continue
 
-            # Generate path
-            path = os.path.join(
-                save_path, date.strftime('%Y-%m-%d') + "-" + slug)
+        #extract date
+        current_date = parser_date(soup.find_all("p", {"class": "CoverEpisode-publicationInfo"})[0].getText())
+        episode_data['date']=current_date.isoformat()
 
-            # Extract content
-            texts = []
-            htmls = []
-            for div in soup.find_all("div", {"class": "Expression-container"}):
-                htmls.append(div)
-                texts.append(div.getText())
-        except Exception as e:
-            log_message(f"An error occurred: {e} for {url}")
-            raise e
+        # Extract content
+        texts = []
+        htmls = []
+        for div in soup.find_all("div", {"class": "Expression-container"}):
+            htmls.append(div)
+            texts.append(div.getText())
+    
+        #Generate path and create output folder
+        output_path = os.path.join(save_path,current_date.strftime('%Y-%m-%d') + "-" + slug)
         
-        # Save content
-        os.makedirs(path)
-        filename = os.path.join(path, 'content.txt')
-        with open(filename, 'w', encoding='utf-8') as file:
-            file.write("\n".join(texts))
-
-        # Optionally save HTML content
-        '''
-        filename = f"{path}/content.html"
-        with open(filename, 'w', encoding='utf-8') as file:
-            texts = []
-            for html in htmls:
-                texts.append(str(html)) 
-            file.write("\n".join(texts))
-        '''
-
+        # Save content in record data
+        episode_data['content_from_url'] = "\n".join(texts)
+        
         # Extract mp3 links
-        mp3s = []
         for script in soup.find_all("script", {"type": "application/ld+json"}):
             mp3_regex = r'https?://[^\s]+\.mp3'
             urls = re.findall(mp3_regex, script.getText())
             for u in urls:
-                if u not in mp3s:
-                    mp3s.append(u)
+                if u not in episode_data['mp3']:
+                    episode_data['mp3'].append(u)
+      
+    else:
+        #episode already scrapped
+        output_path = os.path.join(save_path, matching_files[0])
 
-        for mp3 in mp3s:
-            mp3_path = os.path.join(path, 'content.mp3')
-            download_mp3(mp3, mp3_path)
+    # create output folder if necessary
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+
+    #Download mp3
+    if len(episode_data['mp3'])>0:
+        mp3_path = os.path.join(output_path, 'content.mp3')
+        if not os.path.exists(mp3_path):
+            download_mp3(episode_data['mp3'][0], mp3_path)
+    
+    #ensure data is saved
+    data_file_path = os.path.join(output_path,"data.json")
+    if not os.path.exists(data_file_path) or force_update:
+        # Save file
+        with open(data_file_path, "w", encoding="utf-8") as file:
+            json.dump(episode_data, file, ensure_ascii=False, indent=4)
 
 
 def download_mp3(url, save_path):
@@ -163,28 +162,49 @@ def download_mp3(url, save_path):
         log_message(f"An error occurred: {e}")
 
 
-def scrap(podcast_url, save_path):
+def scrap(podcast_rss_url, save_path,force_update=False):
     # Extract and process links
     log_message("Starting podcast extraction process...")
-    all_links = extract_all_links(
-        current_page=1, max_pages=5, podcast_url=podcast_url)
-    log_message(f"{len(all_links)} episodes found on the website {podcast_url}")
+    
+    all_items = extract_items_from_rss(podcast_rss_url)
 
-    for link in all_links:
-        url = "https://www.radiofrance.fr" + link
-        extract_content(url=url, save_path=save_path)
+    log_message(f"{len(all_items)} episodes found on the website {podcast_rss_url}")
+
+    
+    for item in all_items:
+        url = item.get('link')
+        if url != "https://www.radiofrance.fr/application-mobile-radio-france":
+            try:
+                extract_content(url=url, save_path=save_path,force_update=force_update)
+            except Exception as e:
+                log_message(f"An error occurred: {e} for {url}")
+                raise e
 
     log_message("Podcast extraction process completed.")
 
-
-if __name__ == "__main__":
+def main(force_update=False):
     # Load configuration
     config = configparser.ConfigParser()
     config.read('config.ini')
 
     try:
         save_path = config['DEFAULT']['SavePath']
-        podcast_url = config['DEFAULT']['PodcastUrl']
-        scrap(podcast_url=podcast_url, save_path=save_path)
+        podcast_rss_url = config['DEFAULT']['PodcastRssUrl']
+        scrap(podcast_rss_url=podcast_rss_url, save_path=save_path,force_update=force_update)
     except KeyError as e:
         log_message(f"Configuration error: {e}")
+
+def test():
+    # Load configuration
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+
+    try:
+        save_path = config['DEFAULT']['SavePath']
+        extract_content(url='https://www.radiofrance.fr/franceculture/podcasts/le-pourquoi-du-comment-philo/comment-les-noms-parlent-ils-du-monde-3883953', save_path=save_path, force_update=True)
+    except KeyError as e:
+        log_message(f"Configuration error: {e}")
+
+if __name__ == "__main__":
+   main(force_update=False)
+   #test()
